@@ -1,100 +1,85 @@
-from pymongo import MongoClient
 import os
-from uuid import uuid4, UUID
-from typing import Tuple, Optional, Union
-from obj_types import User, ChatHistory, APIResponse
+import json
+import uuid
+import threading
+from typing import Dict, Any, Tuple, List
 
-class MongoDBClient:
-    def __init__(self):
-        print(os.getenv('MONGODB_CONNECTION_STRING'))
-        self.client = MongoClient(os.getenv('MONGODB_CONNECTION_STRING'))
-        self.db = self.client['ion-web-db']
-        self.users = self.db['Users']
+_DB_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "local_db")
+_DB_PATH = os.path.join(_DB_DIR, "users.json")
+_lock = threading.Lock()
 
-    def add_user(self, email: str) -> Tuple[UUID, str, int]:
-        """Add a new user or return existing user"""
-        print(f"Attempting to add/find user with email: {email}")
-        user = self.users.find_one({'Email': email})
-        print(f"Existing user data: {user}")
-        
-        if user:
-            if 'user_id' in user:
-                print(f"Found existing user with ID: {user['user_id']}")
-                return UUID(user['user_id']), 'User already exists', 200
-            else:
-                user_id = uuid4()
-                print(f"Updating existing user with new ID: {user_id}")
-                self.users.update_one(
-                    {'Email': email}, 
-                    {'$set': {'user_id': str(user_id)}}
-                )
-                return user_id, 'User already exists', 200
-        else:
-            user_id = uuid4()
-            print(f"Creating new user with ID: {user_id}")
-            # Create User model first
-            new_user = User(
-                email=email,
-                user_id=user_id,
-                traces={},
-                messages={}
-            )
-            # Convert to dict and map fields for MongoDB
-            user_data = {
-                'Email': new_user.email,  # Convert 'email' to 'Email' for MongoDB
-                'user_id': str(new_user.user_id),
-                'traces': new_user.traces,
-                'messages': new_user.messages
-            }
-            print(f"Inserting user data: {user_data}")
-            self.users.insert_one(user_data)
-            return user_id, 'User added successfully', 201
 
-    def get_user(self, user_id: Union[str, UUID]) -> Optional[User]:
-        """Get user by user_id"""
-        if isinstance(user_id, UUID):
-            user_id = str(user_id)
-        print(f"Looking for user with ID: {user_id}")
-        user_data = self.users.find_one({'user_id': user_id})
-        print(f"Found user data: {user_data}")
-        
-        if user_data:
-            try:
-                # Map MongoDB fields to Pydantic model fields
-                print(f"Attempting to create User model with email: {user_data.get('Email')}")
-                user = User(
-                    email=user_data['Email'],  # Convert 'Email' to 'email'
-                    user_id=user_id,
-                    traces=user_data.get('traces', {}),
-                    messages=user_data.get('messages', {})
-                )
-                print(f"Successfully created User model: {user}")
-                return user
-            except Exception as e:
-                print(f"Error creating User model: {str(e)}")
-                print(f"User data keys: {user_data.keys()}")
-                raise
-        print("No user found")
-        return None
+def _load() -> Dict[str, Any]:
+    os.makedirs(_DB_DIR, exist_ok=True)
+    if not os.path.exists(_DB_PATH):
+        return {}
+    try:
+        with open(_DB_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
-    def update_chat_history(self, user_id: Union[str, UUID], 
-                          history_id: str, 
-                          chat_history: dict) -> Tuple[bool, str, int]:
-        """Update chat history for a user"""
-        user = self.get_user(user_id)
-        if not user:
-            return False, 'User not found', 404
-        
-        try:
-            messages = user.messages or {}
-            messages[history_id] = chat_history
-            result = self.users.update_one(
-                {'user_id': str(user_id)}, 
-                {'$set': {'messages': messages}}
-            )
-            if result.modified_count > 0:
-                return True, 'Chat history updated successfully', 200
-            return False, 'No changes made to chat history', 304
-        except Exception as e:
-            print(f"Error updating chat history: {e}")
-            return False, 'Failed to update chat history', 500
+
+def _save(db: Dict[str, Any]) -> None:
+    os.makedirs(_DB_DIR, exist_ok=True)
+    with open(_DB_PATH, "w", encoding="utf-8") as f:
+        json.dump(db, f, indent=2)
+
+
+def _find_user(db: Dict[str, Any], *, user_id: str | None = None, email: str | None = None):
+    for uid, rec in db.items():
+        if user_id and uid == user_id:
+            return uid, rec
+        if email and rec.get("Email") == email:
+            return uid, rec
+    return None, None
+
+
+def add_user(email: str) -> Tuple[str, str, int]:
+    """Return (user_id, message, status_code). Stable UUID derived from email."""
+    with _lock:
+        db = _load()
+        uid, rec = _find_user(db, email=email)
+        if rec:
+            return uid, "User already exists", 200
+        uid = str(uuid.uuid5(uuid.NAMESPACE_URL, "ion://" + email))
+        db[uid] = {"Email": email, "user_id": uid,
+                   "traces": {}, "messages": {}}
+        _save(db)
+        return uid, "User created", 200
+
+
+def upsert_trace(user_id: str, trace_name: str, metadata: Dict[str, Any]) -> bool:
+    with _lock:
+        db = _load()
+        uid, rec = _find_user(db, user_id=user_id)
+        if not rec:
+            db[user_id] = {"Email": "unknown",
+                           "user_id": user_id, "traces": {}, "messages": {}}
+            rec = db[user_id]
+        rec.setdefault("traces", {})[trace_name] = metadata or {}
+        _save(db)
+        return True
+
+
+def get_user_traces(user_id: str, search: str = "", page: int = 1, page_size: int = 10) -> List[Dict[str, Any]]:
+    db = _load()
+    _, rec = _find_user(db, user_id=user_id)
+    items: List[Dict[str, Any]] = []
+    if rec and isinstance(rec.get("traces"), dict):
+        for name, meta in rec["traces"].items():
+            if search.lower() not in name.lower():
+                continue
+            m = meta if isinstance(meta, dict) else {}
+            items.append({
+                "trace_name": name,
+                "upload_date": m.get("upload_date", ""),
+                "status": m.get("status", "not_started"),
+                "model": m.get("model", "gpt-4o"),
+                "trace_description": m.get("trace_description", "")
+            })
+    # newest first
+    items.sort(key=lambda r: r.get("upload_date", ""), reverse=True)
+    start = max(0, (page - 1) * page_size)
+    end = start + page_size
+    return items[start:end]

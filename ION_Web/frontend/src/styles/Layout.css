@@ -1,0 +1,65 @@
+.page {
+    background: linear-gradient(180deg, #f7f9fc 0%, #fbfcfe 100%);
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 16px;
+}
+
+/* nice defaults for any table inside the page */
+.container table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: #fff;
+}
+
+.container thead th {
+    background: #0b4ea2;
+    color: #fff;
+    padding: 12px;
+    text-align: left;
+    position: sticky;
+    top: 0;
+}
+
+.container tbody td {
+    padding: 10px 12px;
+    border-top: 1px solid #eef2f7;
+}
+
+.container tbody tr:hover td {
+    background: #fafcff;
+}
+
+.card {
+    background: #fff;
+    border: 1px solid #e8eef8;
+    border-radius: 16px;
+    box-shadow: 0 6px 18px rgba(17, 24, 39, 0.05);
+}
+
+.card__body {
+    padding: 14px;
+}
+
+/* Make the page fill the viewport so the footer stays at the bottom */
+#root,
+body,
+html {
+    height: 100%;
+}
+
+#root {
+    display: flex;
+    flex-direction: column;
+}
+
+.page {
+    flex: 1;
+}
+
+/* main grows to push footer down */

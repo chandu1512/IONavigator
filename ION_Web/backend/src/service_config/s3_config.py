@@ -3,6 +3,7 @@ import os
 from botocore.exceptions import ClientError
 import traceback
 
+
 class S3Client:
     def __init__(self):
         self.s3_client = boto3.client(
@@ -18,7 +19,8 @@ class S3Client:
         """Upload a file to S3"""
         try:
             print(f"Attempting to upload to S3: {object_name}")
-            self.s3_client.upload_fileobj(file_data, self.bucket_name, object_name)
+            self.s3_client.upload_fileobj(
+                file_data, self.bucket_name, object_name)
             print(f"Successfully uploaded: {object_name}")
             return True
         except ClientError as e:
@@ -30,7 +32,8 @@ class S3Client:
         """Download a file from S3"""
         try:
             print(f"Attempting to download from S3: {object_name}")
-            response = self.s3_client.get_object(Bucket=self.bucket_name, Key=object_name)
+            response = self.s3_client.get_object(
+                Bucket=self.bucket_name, Key=object_name)
             content = response['Body'].read()
             print(f"Successfully downloaded: {object_name}")
             return content
@@ -67,15 +70,16 @@ class S3Client:
             return url
         except ClientError as e:
             print(f"Error generating presigned URL: {e}")
-            return None 
-        
+            return None
+
     def check_if_exists(self, object_name):
         try:
-            self.s3_client.head_object(Bucket=self.bucket_name, Key=object_name)
+            self.s3_client.head_object(
+                Bucket=self.bucket_name, Key=object_name)
             return True
         except ClientError:
             return False
-        
+
     def list_objects(self, prefix):
         """
         Recursively list all objects under a prefix directory in S3
@@ -84,16 +88,16 @@ class S3Client:
         try:
             paginator = self.s3_client.get_paginator('list_objects_v2')
             objects = []
-            
-            # Iterate through each page of results
             for page in paginator.paginate(Bucket=self.bucket_name, Prefix=prefix):
                 if 'Contents' in page:
                     objects.extend(page['Contents'])
-                
             print(objects)
             return objects
         except ClientError as e:
             print(f"Error listing objects: {e}")
             print(f"Full traceback: {traceback.format_exc()}")
             return []
-        
+
+
+# ✅ Correct location for instantiating the S3Client object
+s3_client = S3Client()

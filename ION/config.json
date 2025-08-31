@@ -1,0 +1,32 @@
+{
+  "trace_path": "/Users/chandudarapaneni/Desktop/sample_trace.darshan",
+  "analysis_root": "analysis_output",
+  "rate_limit": 3000,
+  "tpm_limit": 180000,
+  "default_model": "gpt-3.5-turbo",
+  "RAG": {
+    "enabled": true,
+    "reset_index": false,
+    "rag_index_dir": "rag/index",
+    "rag_source_data_dir": "rag/data",
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2"
+  },
+  "steps": {
+    "summary_extraction": {
+      "model": "gpt-3.5-turbo"
+    },
+    "rag_diagnosis": {
+      "model": "gpt-3.5-turbo"
+    },
+    "intra_module_merge": {
+      "model": "gpt-3.5-turbo"
+    },
+    "inter_module_merge": {
+      "model": "gpt-3.5-turbo"
+    },
+    "output_refinement": {
+      "model": "gpt-3.5-turbo"
+    }
+  }
+}
+

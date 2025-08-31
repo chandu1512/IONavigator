@@ -1,0 +1,87 @@
+/* Analyze page frame */
+.analysis-page {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+}
+
+/* Blue band title like mock */
+.analysis-titlebar {
+    background: #0b4ea2;
+    color: #fff;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+}
+
+/* Two cards side-by-side */
+.analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+/* Card base */
+.card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+}
+
+.card__head {
+    padding: 12px 14px;
+    font-weight: 700;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.card__body {
+    padding: 12px 14px;
+}
+
+/* Raw trace view */
+.mono-box {
+    white-space: pre-wrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px;
+    max-height: 48vh;
+    overflow: auto;
+}
+
+/* Status row */
+.status-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0 12px;
+}
+
+.pill {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.progress {
+    flex: 1;
+    height: 10px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.progress__bar {
+    height: 100%;
+    background: #1d4ed8;
+}
+
+.actions-row {
+    display: flex;
+    gap: 8px;
+}

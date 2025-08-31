@@ -1,12 +1,30 @@
 site_name: I/O Navigator
 site_url:
+
 theme:
   name: material
 
 nav:
   - Home: index.md
-  - ION Core: ion_process.md
+  - ION Core: ion_core.md
   - ION CLI: ion_cli.md
   - ION Extractor: ion_extractor.md
   - ION Web: ion_web.md
   - TraceBench: tracebench.md
+  - Architecture: architecture.md
+  - Components: components.md
+  - Backend API: backend_api.md
+  - Frontend API: frontend_api.md
+  - Tech Used: tech_used.md
+  - LLM Integration: llm_integration.md
+  - RAG: rag.md
+  - User Flow: user_flow.md
+  - WebSocket: websocket.md
+  - Utility Functions: utility_functions.md
+  - Key Files: key_files.md
+  - Chat Agent: chat_agent.md
+  - Backend Tasks: backend_tasks.md
+  - Trace Config: trace_config.md
+  - Frontend Home: frontend_home.md
+  - Component Diagram: component_diagram.md
+  - Analysis Workflow: analysis_workflow.md

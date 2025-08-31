@@ -3,7 +3,23 @@ from logging.handlers import RotatingFileHandler
 import os
 
 
+def setup_logger(name, log_file=None, level=logging.INFO):
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+
+    handler = logging.FileHandler(
+        log_file) if log_file else logging.StreamHandler()
+    handler.setFormatter(formatter)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
+    logger.propagate = False
+
+    return logger
+
+
 LOG_DIR = "logs"
+
 
 def parse_level(level):
     if level == "INFO":
@@ -26,8 +42,9 @@ def setup_logger(name, log_level="INFO"):
     logger.setLevel(log_level)
 
     # Create formatters
-    #file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(funcName)s - %(message)s')
-    file_formatter = logging.Formatter('%(module)s - %(funcName)s - %(message)s')
+    # file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(funcName)s - %(message)s')
+    file_formatter = logging.Formatter(
+        '%(module)s - %(funcName)s - %(message)s')
     log_file_path = os.path.join(LOG_DIR, f"{name}.log")
     if os.path.exists(log_file_path):
         # clear the file
@@ -36,10 +53,10 @@ def setup_logger(name, log_level="INFO"):
 
         # Ensure the directory exists
         os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
-    
 
     # File Handler
-    file_handler = RotatingFileHandler(log_file_path, maxBytes=1024*1024, backupCount=2)
+    file_handler = RotatingFileHandler(
+        log_file_path, maxBytes=1024*1024, backupCount=2)
     file_handler.setLevel(log_level)
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
@@ -51,8 +68,3 @@ def setup_logger(name, log_level="INFO"):
     logger.addHandler(stream_handler)
 
     return logger
-
-
-
-
-

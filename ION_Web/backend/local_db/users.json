@@ -1,0 +1,91 @@
+{
+  "91f86f06-cb22-5588-8314-23b9c40510b1": {
+    "Email": "test@example.com",
+    "user_id": "91f86f06-cb22-5588-8314-23b9c40510b1",
+    "traces": {},
+    "messages": {}
+  },
+  "98e0678b-fbed-5055-a040-583d122721c5": {
+    "Email": "chandu@udel.edu",
+    "user_id": "98e0678b-fbed-5055-a040-583d122721c5",
+    "traces": {
+      "example-trace": {
+        "model": "gpt-4o"
+      },
+      "3122501-2530422975626927005": {
+        "trace_name": "3122501-2530422975626927005",
+        "status": "not_started",
+        "upload_date": "2025-08-12",
+        "trace_description": "",
+        "model": "gpt-4o-mini"
+      },
+      "3123763-4154436436692713935": {
+        "trace_name": "3123763-4154436436692713935",
+        "model": "gpt-4o",
+        "status": "not_started",
+        "upload_date": "2025-08-09T22:41:42.508486"
+      },
+      "3122490-11184382227774932689": {
+        "trace_name": "3122490-11184382227774932689",
+        "status": "not_started",
+        "upload_date": "2025-08-11",
+        "trace_description": "",
+        "model": "gpt-4.1-mini"
+      },
+      "3122115-3805848506518405580": {
+        "trace_name": "3122115-3805848506518405580",
+        "status": "not_started",
+        "upload_date": "2025-08-11",
+        "trace_description": "",
+        "model": "gpt-4.1"
+      },
+      "3122496-7615739241727410493": {
+        "trace_name": "3122496-7615739241727410493",
+        "model": "gpt-4o",
+        "status": "not_started",
+        "upload_date": "2025-08-09T22:41:59.249771"
+      },
+      "3122112-2552850857417903032": {
+        "trace_name": "3122112-2552850857417903032",
+        "model": "gpt-4o",
+        "status": "not_started",
+        "upload_date": "2025-08-09T22:42:03.532535"
+      },
+      "3122489-8880865181384049799": {
+        "trace_name": "3122489-8880865181384049799",
+        "status": "not_started",
+        "upload_date": "2025-08-11",
+        "trace_description": "",
+        "model": "gpt-4.1"
+      },
+      "3122506-16107607971133491560": {
+        "trace_name": "3122506-16107607971133491560",
+        "status": "not_started",
+        "upload_date": "2025-08-11",
+        "trace_description": "",
+        "model": "anthropic/claude-3-5-sonnet-20240620"
+      },
+      "3122491-4344389146655050182": {
+        "trace_name": "3122491-4344389146655050182",
+        "status": "not_started",
+        "upload_date": "2025-08-11",
+        "trace_description": "",
+        "model": "gpt-4o-mini"
+      },
+      "3122503-4773939237308772047": {
+        "trace_name": "3122503-4773939237308772047",
+        "status": "not_started",
+        "upload_date": "2025-08-11",
+        "trace_description": "",
+        "model": "gpt-4.1-mini"
+      }
+    },
+    "messages": {}
+  },
+  "e0aaf7c4-4a33-5061-8d1e-55a77ef8f678": {
+    "Email": "chandu@udel",
+    "user_id": "e0aaf7c4-4a33-5061-8d1e-55a77ef8f678",
+    "traces": {},
+    "messages": {}
+  }
+}

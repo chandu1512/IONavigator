@@ -1,0 +1,170 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS, cross_origin
+import os
+import json
+import traceback
+import io
+import uuid
+from datetime import datetime
+from werkzeug.utils import secure_filename
+
+from service_config.s3_config import s3_client
+from service_config import mongodb_client
+from utils.logging import setup_logger
+from utils.file_utils import load_darshan_log, verify_and_parse_darshan_log
+from models.api_models import TraceMetadata, UploadTraceResponse, APIResponse
+from constants import SYSTEM_PROMPT_REVISED, SUPPORTED_MODELS
+from task_manager import task_manager
+from utils.render_utils import json_to_html, md_to_html
+
+ANALYSIS_DIR = "./tmp_analysis"
+os.makedirs(ANALYSIS_DIR, exist_ok=True)
+
+app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 1000 * 1024 * 1024
+
+CORS(app, supports_credentials=True, resources={
+    r"/api/*": {
+        "origins": [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://3.138.157.186",
+            "http://ec2-3-138-157-186.us-east-2.compute.amazonaws.com"
+        ],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    },
+    r"/public/*": {"origins": "*"}
+})
+
+metrics_logger = setup_logger('metrics')
+backend_logger = setup_logger('backend')
+
+
+@app.route('/api/user', methods=['POST', 'OPTIONS'])
+@cross_origin(origin="*", supports_credentials=True)
+def add_user():
+    if request.method == 'OPTIONS':
+        return '', 200
+    email = request.json.get('email')
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+    user_id, message, status_code = mongodb_client.add_user(email)
+    return jsonify({'user_id': user_id, 'message': message}), status_code
+
+
+@app.route('/api/user_traces', methods=['POST', 'OPTIONS'])
+@cross_origin(origin="*", supports_credentials=True)
+def get_user_traces():
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        data = request.get_json(force=True) or {}
+        user_id = data.get("user_id", "test-user")
+        search_query = data.get("search", "").lower()
+        page = int(data.get("page", 1))
+        page_size = int(data.get("page_size", 10))
+
+        # New: Get traces from MongoDB (returns list)
+        traces = mongodb_client.get_user_traces(
+            user_id, search_query, page, page_size)
+
+        # For FE compatibility: if traces is not a list, force to []
+        if not isinstance(traces, list):
+            traces = []
+
+        return jsonify(traces), 200
+    except Exception as e:
+        print(f"Error fetching traces: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# -- Keep only ONE definition of each route! --
+# All the other API endpoints below can stay as-is (copy as needed):
+
+
+@app.route('/api/trace_examples/<trace_name>/final_diagnosis', methods=['POST'])
+@cross_origin(origin="*")
+def fetch_trace_example(trace_name):
+    user_id = request.json.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'User ID is required'}), 400
+    try:
+        diagnosis_path = f"{user_id}/{trace_name}/Output/final_diagnosis/final_diagnosis.json"
+        diagnosis_content = s3_client.download_file(diagnosis_path)
+        if not diagnosis_content:
+            return jsonify({'error': 'Diagnosis not found'}), 404
+        trace_diagnosis = json.loads(diagnosis_content)
+        citations = process_diagnosis_sources(trace_diagnosis)
+        new_id = str(uuid.uuid4())
+        return jsonify({
+            'trace_diagnosis': {
+                'content': trace_diagnosis['diagnosis'],
+                'sources': citations
+            },
+            'id': new_id
+        }), 200
+    except Exception as e:
+        print(f"Error fetching trace example: {str(e)}")
+        print(f"Full traceback: {traceback.format_exc()}")
+        return jsonify({'error': 'Failed to fetch trace example'}), 500
+
+
+def process_diagnosis_sources(final_diagnosis):
+    sources = final_diagnosis.get('sources', {})
+    return [
+        {'id': i + 1, 'file': src['file'], 'text': src['text']}
+        for i, src in enumerate(sources.values())
+    ]
+
+
+@app.route('/api/run_analysis', methods=['POST'])
+@cross_origin(origin="*")
+def run_analysis():
+    user_id = request.json.get('user_id')
+    trace_name = request.json.get('trace_name')
+    llm = request.json.get('llm')
+
+    if not all([user_id, trace_name, llm]):
+        return jsonify({'error': 'Missing parameters'}), 400
+
+    metadata_path = f"{user_id}/{trace_name}/metadata.json"
+    metadata_content = s3_client.download_file(metadata_path)
+    if not metadata_content:
+        return jsonify({'error': 'Metadata not found'}), 404
+
+    metadata = json.loads(metadata_content)
+    metadata['model'] = llm
+
+    metadata_file = io.BytesIO(json.dumps(metadata).encode())
+    if not s3_client.upload_file(metadata_file, metadata_path):
+        return jsonify({'error': 'Failed to update metadata'}), 500
+
+    if llm not in SUPPORTED_MODELS:
+        return jsonify({'error': 'Invalid model'}), 400
+
+    task_id = task_manager.submit_task(
+        user_id, trace_name, SUPPORTED_MODELS[llm])
+    return jsonify({'task_id': task_id, 'message': 'Analysis task submitted successfully'}), 202
+
+
+@app.route('/api/analysis_status/<task_id>', methods=['GET'])
+@cross_origin(origin="*")
+def get_analysis_status(task_id):
+    status = task_manager.get_task_status(task_id)
+    if not status:
+        return jsonify({'error': 'Task not found'}), 404
+    return jsonify(status), 200
+
+# ... (other endpoints unchanged from your previous file, just **do not** re-define /api/user_traces!)
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5001)
+
+
+@app.route("/api/user_traces_mongo", methods=["POST"])
+@cross_origin(origin="*")
+def get_user_traces_mongo():
+    user_id = request.json.get("user_id")
+
+    # Hardcoded fallback for testing

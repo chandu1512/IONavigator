@@ -1,256 +1,170 @@
-import React, { useState } from 'react';
-import { Trace } from '../interface/interfaces';
-import '../styles/TraceTable.css';
-import deleteIcon from '../assets/delete-icon.png';
-import analysisIcon from '../assets/start-analysis.svg';
-import inspectIcon from '../assets/inspect-process.svg';
-import interactIcon from '../assets/interact.svg';
-import editIcon from '../assets/edit-icon.svg';
-import rerunIcon from '../assets/rerun-analysis.svg';
+import React from "react";
 
-interface TraceTableProps {
-  traces: Array<Trace>;
-  onInteract: (trace: Trace) => void;
-  onAnalyze: (e: React.MouseEvent, trace: Trace) => void;
-  onDelete: (e: React.MouseEvent, trace: Trace) => void;
-  onInspect: (e: React.MouseEvent, trace: Trace) => void;
-  onRename: (trace: Trace, newName: string) => void;
-  onStopAnalysis: (e: React.MouseEvent, trace: Trace) => void;
-  onModelChange: (trace: Trace, model: string) => void;
-  availableModels: Array<{ value: string; label: string }>;
-  analysisStatuses?: {[key: string]: {
-    taskId: string;
-    status: string;
-    progress: number;
-  }};
-}
+export type AnalysisStatus = "Not Started" | "Running" | "Completed" | "Failed";
 
-const TraceTable: React.FC<TraceTableProps> = ({
+export type Trace = {
+  id: string;
+  trace_name: string;
+  upload_date: string;
+  trace_description?: string;
+  model?: string;
+  status: AnalysisStatus;
+};
+
+type Props = {
+  traces: Trace[];
+  availableModels: string[];
+  analysisStatuses: Record<string, AnalysisStatus>;
+  onAnalyze: (t: Trace) => Promise<void> | void; // 1) Start ▶︎
+  onChat: (t: Trace) => void;                    // 2) Chat 💬
+  onInspect: (t: Trace) => Promise<void> | void; // 3) Trace Analysis 🔍
+  onDelete: (t: Trace) => Promise<void> | void;  // 4) Delete ✖︎
+  onRename: (t: Trace, newName: string) => Promise<void> | void;
+  onModelChange: (t: Trace, newModel: string) => Promise<void> | void;
+};
+
+const pill = (s: AnalysisStatus) => {
+  const map: Record<AnalysisStatus, { bg: string; fg: string; label: string }> = {
+    "Not Started": { bg: "#F1F5F9", fg: "#334155", label: "Not Started" },
+    "Running": { bg: "#DBEAFE", fg: "#1D4ED8", label: "Running" },
+    "Completed": { bg: "#DCFCE7", fg: "#166534", label: "Completed" },
+    "Failed": { bg: "#FEE2E2", fg: "#991B1B", label: "Failed" },
+  };
+  const v = map[s] || map["Not Started"];
+  return (
+    <span style={{ background: v.bg, color: v.fg, padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
+      {v.label}
+    </span>
+  );
+};
+
+const TraceTable: React.FC<Props> = ({
   traces,
-  onInteract,
-  onAnalyze,
-  onDelete,
-  onInspect,
-  onRename,
-  onStopAnalysis,
-  onModelChange,
   availableModels,
-  analysisStatuses = {}
+  analysisStatuses,
+  onAnalyze,
+  onChat,
+  onInspect,
+  onDelete,
+  onRename,
+  onModelChange,
 }) => {
-  const [editingTraceId, setEditingTraceId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState<string>('');
-  const [isRenaming, setIsRenaming] = useState<boolean>(false);
-
-  const getStatus = (trace: Trace) => {
-    const analysisStatus = analysisStatuses[trace.trace_name];
-    if (analysisStatus) {
-      if (analysisStatus.status === 'running') {
-        return {
-          text: `Analyzing (${analysisStatus.progress}%)`,
-          className: 'running'
-        };
-      }
-      return {
-        text: analysisStatus.status.charAt(0).toUpperCase() + analysisStatus.status.slice(1),
-        className: analysisStatus.status
-      };
-    }
-    
-    switch (trace.status) {
-      case 'not_started':
-        return {
-          text: 'Not Started',
-          className: 'not_started'
-        };
-      case 'running':
-        return {
-          text: 'Running',
-          className: 'running'
-        };
-      case 'completed':
-        return {
-          text: 'Completed',
-          className: 'completed'
-        };
-      case 'failed':
-        return {
-          text: 'Failed',
-          className: 'failed'
-        };
-      default:
-        return {
-          text: trace.status ? trace.status.charAt(0).toUpperCase() + trace.status.slice(1) : 'Not Started',
-          className: trace.status ? trace.status.toLowerCase() : 'not_started'
-        };
-    }
+  const actionBtn: React.CSSProperties = {
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    borderRadius: 8,
+    padding: "6px 8px",
+    cursor: "pointer",
   };
 
-  const isAnalyzing = (trace: Trace) => {
-    const analysisStatus = analysisStatuses[trace.trace_name]?.status;
-    return analysisStatus === 'running' || analysisStatus === 'pending' || trace.status === 'running';
-  };
+  const row = (t: Trace, idx: number) => {
+    const status = analysisStatuses[t.trace_name] || t.status;
+    return (
+      <tr key={t.id || idx}>
+        <td style={{ width: "36%", fontWeight: 600 }}>
+          <span
+            title="Double-click to rename"
+            onDoubleClick={() => {
+              const name = prompt("Rename trace:", t.trace_name);
+              if (name && name !== t.trace_name) onRename(t, name);
+            }}
+          >
+            {t.trace_name}
+          </span>
+        </td>
+        <td style={{ width: 140 }}>{t.upload_date}</td>
+        <td style={{ width: 220 }}>
+          <select
+            value={t.model || availableModels[0]}
+            onChange={(e) => onModelChange(t, e.target.value)}
+            style={{ padding: 6, borderRadius: 8, border: "1px solid #e5e7eb", width: "100%" }}
+          >
+            {availableModels.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </td>
+        <td style={{ width: 160 }}>{pill(status)}</td>
 
-  const isAnalysisComplete = (trace: Trace) => {
-    const analysisStatus = analysisStatuses[trace.trace_name]?.status;
-    return analysisStatus === 'completed' || trace.status === 'completed';
-  };
+        {/* 👇 EXACT ORDER: Start ▶︎, Chat 💬, Trace Analysis 🔍, Delete ✖︎ */}
+        <td style={{ width: 260, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          {/* 1) Start */}
+          <button
+            style={actionBtn}
+            title="Start analysis"
+            aria-label="Start analysis"
+            data-testid="action-start"
+            onClick={() => onAnalyze(t)}
+          >
+            ▶︎
+          </button>
 
-  const handleDoubleClick = (trace: Trace) => {
-    setEditingTraceId(trace.trace_name);
-    setEditingName(trace.trace_name);
-  };
+          {/* 2) Chat (Analyze page) */}
+          <button
+            style={actionBtn}
+            title="Open Chat (Analyze)"
+            aria-label="Open Chat"
+            data-testid="action-chat"
+            onClick={() => onChat(t)}
+          >
+            💬
+          </button>
 
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditingName(e.target.value);
-  };
+          {/* 3) Trace Analysis (Inspect process graph) */}
+          <button
+            style={actionBtn}
+            title="Inspect Trace Analysis (process graph)"
+            aria-label="Inspect Trace Analysis"
+            data-testid="action-inspect"
+            onClick={() => onInspect(t)}
+          >
+            🔍
+          </button>
 
-  const handleNameSubmit = async (trace: Trace) => {
-    if (editingName.trim() && editingName !== trace.trace_name) {
-      setIsRenaming(true);
-      try {
-        await onRename(trace, editingName.trim());
-        setEditingTraceId(null);
-        setEditingName('');
-      } finally {
-        setIsRenaming(false);
-      }
-    } else {
-      setEditingTraceId(null);
-    }
-  };
-
-  const handleKeyPress = async (e: React.KeyboardEvent, trace: Trace) => {
-    if (e.key === 'Enter') {
-      await handleNameSubmit(trace);
-    } else if (e.key === 'Escape') {
-      setEditingTraceId(null);
-    }
+          {/* 4) Delete */}
+          <button
+            style={{ ...actionBtn, borderColor: "#fecaca" }}
+            title="Delete trace"
+            aria-label="Delete trace"
+            data-testid="action-delete"
+            onClick={() => onDelete(t)}
+          >
+            ✖︎
+          </button>
+        </td>
+      </tr>
+    );
   };
 
   return (
-    <div className="trace-table-container">
-      <table className="trace-table">
+    <div className="trace-table">
+      <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
         <thead>
-          <tr>
-            <th>
-              <div>Trace Name</div>
-              <div className="edit-hint">(double-click to edit)</div>
+          <tr style={{ background: "#0b4ea2", color: "#fff" }}>
+            <th style={{ textAlign: "left", padding: "10px 12px", borderTopLeftRadius: 12 }}>
+              Trace Name <span style={{ fontWeight: 400, fontSize: 12 }}>(double-click to edit)</span>
             </th>
-            <th>Upload Date</th>
-            <th>Model</th>
-            <th>Status</th>
-            <th>Actions</th>
+            <th style={{ textAlign: "left", padding: "10px 12px" }}>Upload Date</th>
+            <th style={{ textAlign: "left", padding: "10px 12px" }}>Model</th>
+            <th style={{ textAlign: "left", padding: "10px 12px" }}>Status</th>
+            <th style={{ textAlign: "right", padding: "10px 12px", borderTopRightRadius: 12 }}>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {traces.map((trace, index) => (
-            <tr key={index} className={isRenaming && editingTraceId === trace.trace_name ? 'renaming' : ''}>
-              <td 
-                onDoubleClick={() => handleDoubleClick(trace)}
-                className="trace-name-cell"
-                title="Double-click to edit trace name"
-              >
-                {editingTraceId === trace.trace_name ? (
-                  <input
-                    type="text"
-                    value={editingName}
-                    onChange={handleNameChange}
-                    onBlur={() => handleNameSubmit(trace)}
-                    onKeyDown={(e) => handleKeyPress(e, trace)}
-                    autoFocus
-                    className={`trace-name-input ${isRenaming ? 'renaming' : ''}`}
-                    disabled={isRenaming}
-                  />
-                ) : (
-                  <div className="trace-name-wrapper">
-                    <span>{trace.trace_name}</span>
-                    <img 
-                      src={editIcon} 
-                      alt="Edit" 
-                      className="edit-icon"
-                      aria-label="Double-click to edit"
-                    />
-                  </div>
-                )}
-              </td>
-              <td>{new Date(trace.upload_date).toLocaleDateString()}</td>
-              <td>
-                <select
-                  value={trace.model || availableModels[0].value}
-                  onChange={(e) => onModelChange(trace, e.target.value)}
-                  className="model-select"
-                  disabled={isAnalyzing(trace)}
-                >
-                  {availableModels.map((model) => (
-                    <option key={model.value} value={model.value}>
-                      {model.label}
-                    </option>
-                  ))}
-                </select>
-              </td>
-              <td className="status-cell">
-                <span className={`status-badge ${getStatus(trace).className}`}>
-                  {getStatus(trace).text}
-                </span>
-              </td>
-              <td className="action-cell">
-                {isAnalyzing(trace) ? (
-                  <button 
-                    onClick={(e) => onStopAnalysis(e, trace)}
-                    className="analysis-button stop"
-                    title="Stop Analysis"
-                  >
-                    <svg className="stop-icon" viewBox="0 0 24 24" fill="currentColor">
-                      <rect x="6" y="6" width="12" height="12" />
-                    </svg>
-                  </button>
-                ) : (
-                  <button 
-                    onClick={(e) => onAnalyze(e, trace)}
-                    className={`analysis-button ${isAnalysisComplete(trace) ? 'rerun' : ''}`}
-                    title={isAnalysisComplete(trace) ? "Rerun Analysis" : "Start Analysis"}
-                  >
-                    <img 
-                      src={isAnalysisComplete(trace) ? rerunIcon : analysisIcon} 
-                      alt={isAnalysisComplete(trace) ? "Rerun" : "Analyze"} 
-                      className="analysis-icon" 
-                    />
-                  </button>
-                )}
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onInteract(trace); }}
-                  className="interact-button"
-                  title={isAnalysisComplete(trace) ? 
-                    "Interact with Trace" : 
-                    "Analysis must be completed before interaction"}
-                  disabled={!isAnalysisComplete(trace)}
-                >
-                  <img src={interactIcon} alt="Interact" className="interact-icon" />
-                </button>
-                <button 
-                  onClick={(e) => onInspect(e, trace)}
-                  className="inspect-button"
-                  title={isAnalysisComplete(trace) ? 
-                    "Inspect Analysis Process" : 
-                    "Analysis must be completed before inspection"}
-                  disabled={!isAnalysisComplete(trace)}
-                >
-                  <img src={inspectIcon} alt="Inspect" className="inspect-icon" />
-                </button>
-                <button 
-                  onClick={(e) => onDelete(e, trace)}
-                  className="delete-button"
-                  title="Delete trace"
-                >
-                  <img src={deleteIcon} alt="Delete" className="delete-icon" />
-                </button>
+          {traces.length === 0 ? (
+            <tr>
+              <td colSpan={5} style={{ padding: 18, textAlign: "center", color: "#475569" }}>
+                No traces yet — use <strong>Upload New Trace</strong> to add one.
               </td>
             </tr>
-          ))}
+          ) : (
+            traces.map(row)
+          )}
         </tbody>
       </table>
     </div>
   );
 };
 
-export default TraceTable; 
+export default TraceTable;
+export type { Props };

@@ -1,31 +1,17 @@
-import React, { useState } from 'react';
-import './App.css';
-import EmailInput from './components/emailInput';
-import HomePage from './pages/homePage';
-import { UserProvider } from './contexts/UserContext';
+import React from "react";
+import { UserProvider, useUser } from "./contexts/UserContext";
+import HomePage from "./pages/HomePage";
+import AuthPage from "./pages/AuthPage";
 
-function App() {
-  const [userId, setUserId] = useState<string | null>(null);
+const AppContent: React.FC = () => {
+  const { userId } = useUser();
+  return userId ? <HomePage /> : <AuthPage />;
+};
 
-  const handleEmailSubmit = (userId: string) => {
-    setUserId(userId);
-    console.log(userId);
-  };
-
+export default function App() {
   return (
-    <div className="App">
-      <UserProvider>
-        {!userId && (
-          <div className="overlay">
-            <EmailInput onEmailSubmit={handleEmailSubmit} />
-          </div>
-        )}
-        <div className={userId ? '' : 'blur'}>
-          <HomePage />
-        </div>
-      </UserProvider>
-    </div>
+    <UserProvider>
+      <AppContent />
+    </UserProvider>
   );
 }
-
-export default App;

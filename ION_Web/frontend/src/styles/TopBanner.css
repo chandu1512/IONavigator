@@ -1,0 +1,10 @@
+.top-banner{background:#0B5CAB;color:#fff}
+.top-banner__wrap{height:64px;max-width:1400px;padding:0 16px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+.top-banner__left{display:flex;align-items:center;gap:10px}
+.top-banner__brand{font-weight:700;letter-spacing:.2px;font-size:18px}
+.top-banner__right{display:flex;align-items:center;gap:10px}
+.btn-pill{appearance:none;border:0;cursor:pointer;font-weight:700;border-radius:999px;padding:8px 14px;line-height:1}
+.btn-upload{background:#FFD137;color:#173a63}
+.btn-upload:disabled{opacity:.7;cursor:not-allowed}
+.btn-user{background:#0e72d0;color:#fff}
+.btn-user--ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.35)}
