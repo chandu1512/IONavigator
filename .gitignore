@@ -180,3 +180,6 @@ ION/ion/Index/**/*.json
 test_traces/
 
 ION/ION_Output/
+
+# runtime uploads (do not commit)
+ION_Web/backend/uploads/
